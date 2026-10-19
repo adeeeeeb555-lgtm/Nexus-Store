@@ -129,6 +129,7 @@ a{text-decoration:none}.shell{max-width:1440px;margin:auto;padding:24px}.topbar{
   </aside>
   <main>
     {% if active_bot %}
+    <!-- تظهر اللوحة واللوق وأزرار التحكم فقط عند تحديد بوت -->
     <section class="panel">
       <div class="control-title">
         <div><div class="eyebrow">BOT OVERVIEW</div><h3 class="mt-2">{{ active_bot.name }}</h3></div>
@@ -158,12 +159,21 @@ a{text-decoration:none}.shell{max-width:1440px;margin:auto;padding:24px}.topbar{
       </div>
       <div class="console-head"><h4><i class="fa-solid fa-terminal ms-2" style="color:var(--gold)"></i>سجل العمليات</h4><span class="count">CONSOLE LOGS</span></div>
       <div class="console-box" id="consoleLogs">{% for log in bot_logs %}{{ log }}
-{% else %}[Nexus Hosting] لوحة السجلات جاهزة. ستظهر الأحداث المسجلة هنا.
+{% else %}[Nexus Hosting] لوحة السجلات جاهزة. ستظهر الأحداث المسجلة هنا عند تشغيل البوت.
 {% endfor %}</div>
-      <div class="ai-box"><div class="ai-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div><h4>مساعد تشخيص الأخطاء</h4><p>{{ ai_diagnosis }}</p><small class="muted d-block mt-2">تحليل مبسّط اعتمادًا على السجلات المحفوظة، وليس فحصًا مباشرًا لعملية البوت.</small></div></div>
+      <div class="ai-box"><div class="ai-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div><h4>مساعد تشخيص الأخطاء</h4><p>{{ ai_diagnosis }}</p><small class="muted d-block mt-2">تحليل مبسّط اعتمادًا على السجلات المحفوظة.</small></div></div>
     </section>
     {% else %}
-    <section class="panel welcome"><div class="welcome-logo"><i class="fa-solid fa-rocket"></i></div><div class="eyebrow">READY WHEN YOU ARE</div><h2>ابدأ بإضافة أول بوت</h2><p>ستظهر هنا لوحة التحكم والسجلات والإعدادات بمجرد إضافة بوت جديد إلى مساحة العمل الخاصة بك.</p><button class="btn btn-nexus" data-bs-toggle="modal" data-bs-target="#addBotModal"><i class="fa-solid fa-plus ms-2"></i>إضافة أول بوت</button></section>
+    <!-- واجهة ترحيبية بسيطة قبل الضغط على أي بوت -->
+    <section class="panel welcome">
+      <div class="welcome-logo"><i class="fa-solid fa-hand-pointer"></i></div>
+      <div class="eyebrow">SELECT A BOT</div>
+      <h2>اختر بوت لعرض لوحة التحكم</h2>
+      <p>قم باختيار بوت من قائمة "بوتاتي" على اليمين لعرض أزرار التشغيل والإيقاف، اللوق الحي، والمساعد الذكي.</p>
+      {% if not user_bots %}
+      <button class="btn btn-nexus" data-bs-toggle="modal" data-bs-target="#addBotModal"><i class="fa-solid fa-plus ms-2"></i>إضافة أول بوت</button>
+      {% endif %}
+    </section>
     {% endif %}
   </main>
 </div>
@@ -183,6 +193,7 @@ a{text-decoration:none}.shell{max-width:1440px;margin:auto;padding:24px}.topbar{
 
 <footer>© 2026 <strong style="color:#cbd4e2">Nexus Hosting</strong> — جميع الحقوق محفوظة <div class="mt-1">Discord Bot Management Dashboard</div></footer>
 </div>
+
 {% if user %}
 <div class="modal fade" id="addBotModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-white">
   <div class="modal-header"><h5 class="modal-title fw-bold"><i class="fa-solid fa-robot ms-2" style="color:var(--gold)"></i>إضافة بوت جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
@@ -217,15 +228,13 @@ def index():
         user_bots = all_bots.get(user['id'], [])
         
         if user_bots:
-            if selected_bot_idx is None or selected_bot_idx >= len(user_bots):
-                selected_bot_idx = 0
-            active_bot = user_bots[selected_bot_idx]
-            
-            all_logs = load_data(LOGS_FILE)
-            bot_logs = all_logs.get(str(selected_bot_idx), [])
-            
-            combined_logs = "\n".join(bot_logs)
-            ai_diagnosis = ai_diagnose_issue(combined_logs, active_bot['name'], active_bot['lang'])
+            # التعديل الهام: لا نفتح أول بوت تلقائياً إلا إذا اختار المستخدم بوت برقم المحادثة ?bot=X
+            if selected_bot_idx is not None and 0 <= selected_bot_idx < len(user_bots):
+                active_bot = user_bots[selected_bot_idx]
+                all_logs = load_data(LOGS_FILE)
+                bot_logs = all_logs.get(str(selected_bot_idx), [])
+                combined_logs = "\n".join(bot_logs)
+                ai_diagnosis = ai_diagnose_issue(combined_logs, active_bot['name'], active_bot['lang'])
 
     return render_template_string(
         HTML_TEMPLATE, 
