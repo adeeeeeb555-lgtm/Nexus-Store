@@ -51,18 +51,16 @@ def add_bot_log(bot_idx, message):
     save_data(LOGS_FILE, logs)
 
 # ==================== محاكي الذكاء الاصطناعي لتحليل المشاكل ====================
-def ai_diagnose_issue(log_text, bot_name):
+def ai_diagnose_issue(log_text, bot_name, lang):
     log_lower = (log_text or "").lower()
-    if "loginfailure" in log_lower or "token" in log_lower:
-        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** التوكن الخاص بـ ({bot_name}) غير صحيح أو منتهي الصلاحية. يرجى التأكد من التوكن وإعادة إدخاله من جديد."
+    if "loginfailure" in log_lower or "token" in log_lower or "unauthorized" in log_lower:
+        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** التوكن الخاص بـ ({bot_name}) برمجة ({lang}) غير صحيح أو منتهي. تحقق من إعدادات التوكن."
     elif "privilegedintentsrequired" in log_lower or "intent" in log_lower:
-        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** البوت ({bot_name}) يفتقد لصلاحيات الـ Intents. يجب الدخول إلى Discord Developer Portal وتفعيل خيارات (Presence, Server Members, Message Content Intents)."
-    elif "ratelimit" in log_lower:
-        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** تم حظر البوت مؤقتًا بسبب كثرة الطلبات (Rate Limited). انتظر قليلاً ريثما يفك الحظر."
-    elif "modulenotfound" in log_lower or "importerror" in log_lower:
-        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** توجد مكتبة برمجية ناقصة مطلوبة لتشغيل كود البوت. تأكد من إضافتها في ملف متطلبات التشغيل."
+        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** البوت يفتقد لصلاحيات الـ Intents في Discord Developer Portal (فعّل Message Content و Server Members)."
+    elif "modulenotfound" in log_lower or "cannot find module" in log_lower:
+        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** توجد مكتبة برمجية ناقصة لم يتم تثبيتها للغة ({lang}). تحقق من ملف المتطلبات."
     else:
-        return f"✅ **تحليل الذكاء الاصطناعي (AI):** البوت ({bot_name}) يبدو مستقراً ولا توجد أخطاء حرجة ظاهرة في السجلات الحالية."
+        return f"✅ **تحليل الذكاء الاصطناعي (AI):** البوت ({bot_name}) بلغة ({lang}) يعمل بشكل مستقر ولا توجد أخطاء حرجة."
 
 # ==================== تصميم الواجهة (HTML Template) ====================
 HTML_TEMPLATE = """
@@ -71,7 +69,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Store • لوحة تحكم وإدارة البوتات الذكية</title>
+    <title>Nexus Store • لوحة استضافة البوتات السحابية</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -94,7 +92,7 @@ HTML_TEMPLATE = """
         <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
             <div>
                 <h6 class="accent-text mb-0"><i class="fa-solid fa-server me-2"></i>NEXUS STORE HOSTING</h6>
-                <h3 class="fw-bold mb-0">لوحة تحكم البوتات الذكية</h3>
+                <h3 class="fw-bold mb-0">منصة إدارة الاستضافة السحابية</h3>
             </div>
             <div>
                 {% if user %}
@@ -116,11 +114,11 @@ HTML_TEMPLATE = """
 
         {% if user %}
         <div class="row">
-            <!-- قائمة البوتات وإضافة بوت -->
+            <!-- قائمة البوتات وإضافة بوت جديد -->
             <div class="col-md-4">
                 <div class="nexus-card">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0"><i class="fa-solid fa-robot me-2"></i>بوتاتك</h5>
+                        <h5 class="fw-bold mb-0"><i class="fa-solid fa-robot me-2"></i>بوتاتك المضافة</h5>
                         <button class="btn btn-nexus btn-sm" data-bs-toggle="modal" data-bs-target="#addBotModal">
                             <i class="fa-solid fa-plus me-1"></i> إضافة بوت
                         </button>
@@ -132,21 +130,21 @@ HTML_TEMPLATE = """
                                 <h6 class="mb-1 fw-bold">{{ bot.name }}</h6>
                                 <span class="badge {% if bot.status == 'شغال' %}bg-success{% else %}bg-danger{% endif %}">{{ bot.status }}</span>
                             </div>
-                            <small class="text-muted">اللغة: {{ bot.lang }} | البريفكس: {{ bot.prefix }}</small>
+                            <small class="text-muted">الغة: {{ bot.lang }} | البريفكس: {{ bot.prefix }}</small>
                         </a>
                         {% else %}
-                        <p class="text-muted text-center py-3">لم تقم بإضافة أي بوتات بعد.</p>
+                        <p class="text-muted text-center py-3">لم تقم بإضافة أي بوتات حتى الآن.</p>
                         {% endfor %}
                     </div>
                 </div>
             </div>
 
-            <!-- لوحة التحكم المخصصة للبوت المختار -->
+            <!-- لوحة التحكم الكاملة للبوت المحدد -->
             <div class="col-md-8">
                 {% if active_bot %}
                 <div class="nexus-card">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="fw-bold accent-text mb-0"><i class="fa-solid fa-sliders me-2"></i>إدارة البوت: {{ active_bot.name }}</h4>
+                        <h4 class="fw-bold accent-text mb-0"><i class="fa-solid fa-sliders me-2"></i>تحكم البوت: {{ active_bot.name }}</h4>
                         <div>
                             <a href="/bot_action/{{ selected_bot_idx }}/start" class="btn btn-success btn-sm fw-bold"><i class="fa-solid fa-play me-1"></i> تشغيل</a>
                             <a href="/bot_action/{{ selected_bot_idx }}/stop" class="btn btn-danger btn-sm fw-bold"><i class="fa-solid fa-stop me-1"></i> إيقاف</a>
@@ -154,44 +152,45 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
 
-                    <!-- لوحة بيانات البوت وتغيير اللغة -->
+                    <!-- لوحة بيانات البوت وتغيير لغة البرمجة -->
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="p-3 bg-dark rounded border border-secondary">
-                                <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-circle-info me-2"></i>بيانات البوت</h6>
+                                <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-circle-info me-2"></i>معلومات البوت</h6>
                                 <p class="mb-1"><strong>الحالة:</strong> <span class="badge {% if active_bot.status == 'شغال' %}bg-success{% else %}bg-danger{% endif %}">{{ active_bot.status }}</span></p>
-                                <p class="mb-1"><strong>بادئة الأوامر (Prefix):</strong> {{ active_bot.prefix }}</p>
-                                <p class="mb-0"><strong>اللغة الحالية:</strong> {{ active_bot.lang }}</p>
+                                <p class="mb-1"><strong>البريفكس:</strong> {{ active_bot.prefix }}</p>
+                                <p class="mb-0"><strong>لغة البرمجة:</strong> <span class="badge bg-info text-dark">{{ active_bot.lang }}</span></p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="p-3 bg-dark rounded border border-secondary">
-                                <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-language me-2"></i>اختيار لغة البوت</h6>
+                                <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-code me-2"></i>تغيير لغة البرمجة</h6>
                                 <form action="/update_lang/{{ selected_bot_idx }}" method="POST" class="d-flex gap-2">
                                     <select name="lang" class="form-select bg-secondary text-white border-0 form-select-sm">
-                                        <option value="العربية" {% if active_bot.lang == 'العربية' %}selected{% endif %}>العربية (Arabic)</option>
-                                        <option value="الإنجليزية" {% if active_bot.lang == 'الإنجليزية' %}selected{% endif %}>الإنجليزية (English)</option>
-                                        <option value="الفرنسية" {% if active_bot.lang == 'الفرنسية' %}selected{% endif %}>الفرنسية (French)</option>
+                                        <option value="Python" {% if active_bot.lang == 'Python' %}selected{% endif %}>Python</option>
+                                        <option value="JavaScript (Node.js)" {% if active_bot.lang == 'JavaScript (Node.js)' %}selected{% endif %}>JavaScript (Node.js)</option>
+                                        <option value="Lua" {% if active_bot.lang == 'Lua' %}selected{% endif %}>Lua</option>
+                                        <option value="TypeScript" {% if active_bot.lang == 'TypeScript' %}selected{% endif %}>TypeScript</option>
                                     </select>
-                                    <button type="submit" class="btn btn-nexus btn-sm">حفظ اللغة</button>
+                                    <button type="submit" class="btn btn-nexus btn-sm">حفظ</button>
                                 </form>
                             </div>
                         </div>
                     </div>
 
                     <!-- لوحة اللوق (سجل العمليات والتشغيل) -->
-                    <h5 class="fw-bold mb-2"><i class="fa-solid fa-terminal me-2"></i>سجل العمليات واللوق (Live Console)</h5>
+                    <h5 class="fw-bold mb-2"><i class="fa-solid fa-terminal me-2"></i>سجل اللوق المباشر (Console Logs)</h5>
                     <div class="console-box" id="consoleLogs">
                         {% for log in bot_logs %}
                             {{ log }}<br>
                         {% else %}
-                            [Nexus System] لا توجد سجلات تشغيل لهذا البوت حتى الآن. اضغط على تشغيل لبدء البوت...
+                            [Nexus Store Engine] البوت جاهز. اضغط على زر تشغيل لبدء البث وعرض السجلات...
                         {% endfor %}
                     </div>
 
-                    <!-- لوحة المساعد الذكي AI لتحليل المشاكل -->
+                    <!-- مساعد الذكاء الاصطناعي لتحليل المشاكل -->
                     <div class="ai-box">
-                        <h6 class="fw-bold text-warning mb-1"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>مساعد الذكاء الاصطناعي (AI Diagnostics)</h6>
+                        <h6 class="fw-bold text-warning mb-1"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>مساعد الذكاء الاصطناعي (AI Error Diagnostics)</h6>
                         <p class="mb-0">{{ ai_diagnosis }}</p>
                     </div>
                 </div>
@@ -199,7 +198,7 @@ HTML_TEMPLATE = """
                 <div class="nexus-card text-center py-5">
                     <i class="fa-solid fa-hand-pointer display-4 text-muted mb-3"></i>
                     <h4 class="fw-bold">اختر بوت من القائمة الجانبية</h4>
-                    <p class="text-muted">الرجاء اختيار أحد بوتاتك أو إضافة بوت جديد لعرض لوحة التحكم وإدارته بالكامل.</p>
+                    <p class="text-muted">الرجاء اختيار أحد بوتاتك أو إضافة بوت جديد للتحكم الكامل به.</p>
                 </div>
                 {% endif %}
             </div>
@@ -208,16 +207,16 @@ HTML_TEMPLATE = """
         <div class="nexus-card text-center py-5">
             <i class="fa-brands fa-discord display-1 accent-text mb-3"></i>
             <h2 class="fw-bold">مرحباً بك في منصة Nexus Store</h2>
-            <p class="text-muted col-md-8 mx-auto">قم بتسجيل الدخول بحساب ديسكورد للوصول إلى لوحات التحكم الخاصة ببوتاتك، إدارة التشغيل، اللوق، واللغات.</p>
+            <p class="text-muted col-md-8 mx-auto">منصتك السحابية المتكاملة لإدارة واستضافة بوتات الديسكورد بكل سهولة واحترافية.</p>
             <a href="/login" class="btn btn-discord btn-lg px-5 mt-3">
-                <i class="fa-brands fa-discord me-2"></i> الدخول باستخدام ديسكورد
+                <i class="fa-brands fa-discord me-2"></i> تسجيل الدخول عبر Discord
             </a>
         </div>
         {% endif %}
 
         <footer>
             <p class="mb-1">جميع الحقوق محفوظة © <strong>Nexus Store</strong> 2026</p>
-            <small class="text-muted">Powered by Nexus Store Advanced Management Engine</small>
+            <small class="text-muted">Cloud Bot Hosting Infrastructure</small>
         </footer>
     </div>
 
@@ -227,7 +226,7 @@ HTML_TEMPLATE = """
         <div class="modal-dialog">
             <div class="modal-content bg-dark text-white border-secondary">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title">إضافة بوت جديد</h5>
+                    <h5 class="modal-title">إضافة بوت جديد للاستضافة</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form action="/add_bot" method="POST">
@@ -245,17 +244,18 @@ HTML_TEMPLATE = """
                             <input type="text" name="prefix" value="!" class="form-control bg-secondary text-white border-0">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">لغة البوت الأساسية</label>
+                            <label class="form-label">لغة البرمجة</label>
                             <select name="lang" class="form-select bg-secondary text-white border-0">
-                                <option value="العربية">العربية</option>
-                                <option value="الإنجليزية">الإنجليزية</option>
-                                <option value="الفرنسية">الفرنسية</option>
+                                <option value="Python">Python</option>
+                                <option value="JavaScript (Node.js)">JavaScript (Node.js)</option>
+                                <option value="Lua">Lua</option>
+                                <option value="TypeScript">TypeScript</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer border-secondary">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-nexus">حفظ البوت</button>
+                        <button type="submit" class="btn btn-nexus">حفظ وإضافة</button>
                     </div>
                 </form>
             </div>
@@ -268,7 +268,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# ==================== المسارات والتحكم (Routes) ====================
+# ==================== المسارات والمنطق (Routes) ====================
 
 @app.route('/')
 def index():
@@ -276,7 +276,7 @@ def index():
     user_bots = []
     active_bot = None
     bot_logs = []
-    ai_diagnosis = "لم يتم تشخيص أي أخطاء بعد."
+    ai_diagnosis = "لم يتم رصد أخطاء."
     selected_bot_idx = request.args.get('bot', type=int)
 
     if user:
@@ -288,13 +288,11 @@ def index():
                 selected_bot_idx = 0
             active_bot = user_bots[selected_bot_idx]
             
-            # جلب اللوق الخاص بالبوت
             all_logs = load_data(LOGS_FILE)
             bot_logs = all_logs.get(str(selected_bot_idx), [])
             
-            # تشخيص المشكلة بواسطة الذكاء الاصطناعي بناءً على اللوق
             combined_logs = "\n".join(bot_logs)
-            ai_diagnosis = ai_diagnose_issue(combined_logs, active_bot['name'])
+            ai_diagnosis = ai_diagnose_issue(combined_logs, active_bot['name'], active_bot['lang'])
 
     return render_template_string(
         HTML_TEMPLATE, 
@@ -361,7 +359,7 @@ def add_bot():
     bot_name = request.form.get('name')
     bot_token = request.form.get('token')
     bot_prefix = request.form.get('prefix', '!')
-    bot_lang = request.form.get('lang', 'العربية')
+    bot_lang = request.form.get('lang', 'Python')
 
     all_bots = load_data(BOTS_FILE)
     if user['id'] not in all_bots:
@@ -377,7 +375,7 @@ def add_bot():
     })
 
     save_data(BOTS_FILE, all_bots)
-    add_bot_log(new_bot_idx, "تم إنشاء وإضافة البوت بنجاح إلى منصة Nexus Store.")
+    add_bot_log(new_bot_idx, f"تم إضافة البوت بنجاح بلغة البرمجة ({bot_lang}).")
     return redirect(url_for('index', bot=new_bot_idx))
 
 @app.route('/bot_action/<int:bot_idx>/<action>')
@@ -393,13 +391,13 @@ def bot_action(bot_idx, action):
         bot = user_bots[bot_idx]
         if action == 'start':
             bot['status'] = 'شغال'
-            add_bot_log(bot_idx, f"▶️ تم تشغيل البوت ({bot['name']}) بنجاح.")
+            add_bot_log(bot_idx, f"▶️ تم بدء تشغيل بوت ({bot['name']}) بنجاح.")
         elif action == 'stop':
             bot['status'] = 'متوقف'
-            add_bot_log(bot_idx, f"⏹️ تم إيقاف تشغيل البوت ({bot['name']}).")
+            add_bot_log(bot_idx, f"⏹️ تم إيقاف تشغيل بوت ({bot['name']}).")
         elif action == 'restart':
             bot['status'] = 'شغال'
-            add_bot_log(bot_idx, f"🔄 جاري إعادة تشغيل البوت ({bot['name']})... البوت يعمل الآن.")
+            add_bot_log(bot_idx, f"🔄 جاري إعادة تشغيل بوت ({bot['name']})... البوت يعمل الآن.")
         
         save_data(BOTS_FILE, all_bots)
 
@@ -411,14 +409,14 @@ def update_lang(bot_idx):
     if not user:
         return redirect(url_for('login'))
 
-    new_lang = request.form.get('lang', 'العربية')
+    new_lang = request.form.get('lang', 'Python')
     all_bots = load_data(BOTS_FILE)
     user_bots = all_bots.get(user['id'], [])
 
     if bot_idx < len(user_bots):
         user_bots[bot_idx]['lang'] = new_lang
         save_data(BOTS_FILE, all_bots)
-        add_bot_log(bot_idx, f"🌐 تم تحديث لغة البوت إلى: {new_lang}")
+        add_bot_log(bot_idx, f"💻 تم تغيير لغة برمجة البوت إلى: {new_lang}")
 
     return redirect(url_for('index', bot=bot_idx))
 
