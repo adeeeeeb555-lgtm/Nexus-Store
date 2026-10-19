@@ -1,6 +1,6 @@
 """
 ===================================================================
- NEXUS CLOUD HOSTING • Enterprise Bot Infrastructure Dashboard
+ NEXUS CLOUD HOSTING • Enterprise Discord Bot Platform
  Rights & Copyrights © Nexus Store - All Rights Reserved
 ===================================================================
 """
@@ -9,7 +9,7 @@ import json
 import time
 import requests
 from pathlib import Path
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template_string, request, redirect, url_for, session
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "nexus_super_secret_enterprise_key_999")
@@ -27,6 +27,8 @@ BASE = Path(__file__).resolve().parent
 USERS_FILE = BASE / "users_db.json"
 BOTS_FILE = BASE / "user_bots.json"
 LOGS_FILE = BASE / "bot_logs.json"
+
+MAX_BOTS_PER_USER = 3  # الحد الأقصى للبوتات لكل مستخدم في الخطة الحالية
 
 def load_data(file_path):
     if file_path.exists():
@@ -59,14 +61,14 @@ def ai_diagnose_issue(log_text, bot_name, lang):
     else:
         return f"✅ **تحليل الذكاء الاصطناعي:** البوت ({bot_name}) بلغة ({lang}) يعمل بشكل استثنائي ومستقر."
 
-# ==================== تصميم الواجهة (HTML & CSS) ====================
+# ==================== تصميم الواجهة الشامل (HTML & CSS) ====================
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nexus Cloud — لوحة استدارة البوتات</title>
+<title>Nexus Cloud — لوحة إدارة البوتات</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
@@ -81,6 +83,7 @@ HTML_TEMPLATE = """
   --text-muted: #8b949e;
   --neon-green: #35c98a;
   --neon-red: #ff6b78;
+  --active-blue: #38bdf8;
 }
 
 body {
@@ -99,14 +102,10 @@ a { text-decoration: none; color: inherit; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-icon { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, #ffe18a, var(--gold-accent)); display: grid; place-items: center; color: #111; font-size: 20px; font-weight: bold; }
 
-/* Landing Hero */
-.hero-landing { text-align: center; padding: 60px 20px; }
-.hero-landing h1 { font-size: 42px; font-weight: 800; margin-bottom: 20px; }
-.hero-landing h1 span { color: var(--gold-accent); }
 .btn-discord-main { background: #5865F2; color: white; padding: 12px 30px; border-radius: 12px; font-weight: 800; font-size: 18px; border: none; }
 .btn-discord-main:hover { background: #4752c4; color: white; }
 
-/* Resource Usage Bar Panel (مطابق للصورة الأولى) */
+/* Resource Usage Bar Panel */
 .resource-header-panel {
   background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 14px; padding: 20px; margin-bottom: 25px;
 }
@@ -118,7 +117,7 @@ a { text-decoration: none; color: inherit; }
 .progress-bar-custom { height: 6px; background: #212d40; border-radius: 10px; margin-top: 8px; position: relative; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: var(--gold-accent); border-radius: 10px; }
 
-/* Deployments Table (جدول البوتات مطابق للصورة) */
+/* Deployments Table */
 .deployments-panel { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 14px; padding: 20px; }
 .deploy-table { width: 100%; border-collapse: collapse; }
 .deploy-table th { color: var(--text-muted); font-size: 13px; padding: 12px; border-bottom: 1px solid var(--panel-border); text-align: right; }
@@ -128,13 +127,26 @@ a { text-decoration: none; color: inherit; }
 .status-badge.on { background: rgba(53, 201, 138, 0.15); color: var(--neon-green); }
 .status-badge.off { background: rgba(255, 107, 120, 0.15); color: var(--neon-red); }
 
-/* Top Resource Bar in Bot Control (مطابق للصورة الثانية) */
+/* Top Resource Bar in Bot Control */
 .top-stats-bar {
   background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 14px;
-  padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;
+  padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;
 }
 .stat-box { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
 .stat-box strong { color: var(--text-main); font-size: 15px; }
+
+/* القائمة الخيارات المضافة المأخوذة من الصورة بالضبط */
+.nav-tabs-nexus {
+  display: flex; gap: 20px; border-bottom: 1px solid var(--panel-border); margin-bottom: 20px; padding-bottom: 8px; overflow-x: auto;
+}
+.nav-tab-item {
+  color: var(--text-muted); font-size: 15px; font-weight: 700; padding: 8px 12px; cursor: pointer; position: relative; border: none; background: none;
+}
+.nav-tab-item:hover { color: var(--text-main); }
+.nav-tab-item.active { color: var(--text-main); }
+.nav-tab-item.active::after {
+  content: ''; position: absolute; bottom: -9px; left: 0; width: 100%; height: 3px; background: white; border-radius: 2px;
+}
 
 /* Console Screen */
 .console-box {
@@ -172,16 +184,15 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 </header>
 
 {% if not user %}
-<!-- Landing Page -->
-<div class="hero-landing">
-  <h1>استضافة بوتات ديسكورد <span>الاحترافية والأسرع</span></h1>
+<div class="text-center py-5">
+  <h1 class="fw-bold">استضافة بوتات ديسكورد الاحترافية والأسرع</h1>
   <p class="text-muted col-md-7 mx-auto mb-4">تحكم كامل ببوتاتك، مراقبة حية للموارد، ووحدة تحكم متكاملة.</p>
   <a href="/login" class="btn-discord-main"><i class="fa-brands fa-discord me-2"></i> ابدأ الآن عبر Discord</a>
 </div>
 {% else %}
 
 {% if not active_bot %}
-<!-- الصفحة الرئيسية: مجموعة الموارد وعمليات النشر (مطابق للصورة الأولى تماماً) -->
+<!-- الصفحة الرئيسية: مجموعة الموارد وعمليات النشر -->
 <div class="resource-header-panel">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold m-0"><i class="fa-solid fa-chart-line text-warning me-2"></i>مجموعة الموارد</h5>
@@ -190,8 +201,8 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
   <div class="resource-grid">
     <div class="resource-item">
       <small>الذاكرة (RAM)</small>
-      <div class="val">256 MB <span class="text-muted fs-6">من 256 MB</span></div>
-      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+      <div class="val">256 MB <span class="text-muted fs-6">من 512 MB</span></div>
+      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: 50%;"></div></div>
     </div>
     <div class="resource-item">
       <small>CPU</small>
@@ -200,13 +211,13 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
     </div>
     <div class="resource-item">
       <small>التخزين</small>
-      <div class="val">512 MB <span class="text-muted fs-6">من 512 MB</span></div>
-      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+      <div class="val">210 MB <span class="text-muted fs-6">من 512 MB</span></div>
+      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: 40%;"></div></div>
     </div>
     <div class="resource-item">
       <small>عمليات النشر</small>
-      <div class="val">{{ user_bots|length }} <span class="text-muted fs-6">من 3</span></div>
-      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: {{ (user_bots|length / 3) * 100 }}%;"></div></div>
+      <div class="val">{{ user_bots|length }} <span class="text-muted fs-6">من {{ max_bots }}</span></div>
+      <div class="progress-bar-custom"><div class="progress-bar-fill" style="width: {{ (user_bots|length / max_bots) * 100 }}%;"></div></div>
     </div>
   </div>
 </div>
@@ -261,18 +272,29 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 </div>
 
 {% else %}
-<!-- صفحة تحكم البوت الفردي (مطابق للصورة الثانية تماماً) -->
+<!-- صفحة تحكم البوت الفردي المتقدمة -->
 <div class="top-stats-bar">
   <div class="d-flex align-items-center gap-3">
-    <a href="/" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-right"></i></a>
+    <a href="/" class="btn btn-outline-secondary btn-sm" title="العودة للمشاريع"><i class="fa-solid fa-arrow-right"></i></a>
     <h4 class="fw-bold m-0 text-white">{{ active_bot.name }}</h4>
-    <span class="badge bg-secondary">{{ active_bot.lang }}</span>
+    
+    <!-- إمكانية تغيير لغة البرمجة مباشرة من اللوحة -->
+    <form action="/update_lang/{{ selected_bot_idx }}" method="POST" class="d-flex align-items-center gap-1">
+      <select name="lang" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;" onchange="this.form.submit()">
+        <option value="Python" {% if active_bot.lang == 'Python' %}selected{% endif %}>Python</option>
+        <option value="JavaScript (Node.js)" {% if active_bot.lang == 'JavaScript (Node.js)' %}selected{% endif %}>JavaScript (Node.js)</option>
+        <option value="Lua" {% if active_bot.lang == 'Lua' %}selected{% endif %}>Lua</option>
+        <option value="TypeScript" {% if active_bot.lang == 'TypeScript' %}selected{% endif %}>TypeScript</option>
+      </select>
+    </form>
   </div>
+
   <div class="d-flex align-items-center gap-4">
     <div class="stat-box">RAM: <strong>48 MB / 256 MB</strong></div>
     <div class="stat-box">CPU: <strong>0% / 15%</strong></div>
     <div class="stat-box">التخزين: <strong>59 MB / 512 MB</strong></div>
   </div>
+
   <div class="d-flex gap-2">
     <a href="/bot_action/{{ selected_bot_idx }}/start" class="btn btn-success btn-sm fw-bold px-3"><i class="fa-solid fa-play me-1"></i> تشغيل</a>
     <a href="/bot_action/{{ selected_bot_idx }}/stop" class="btn btn-danger btn-sm fw-bold px-3"><i class="fa-solid fa-stop me-1"></i> إيقاف</a>
@@ -280,22 +302,72 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
   </div>
 </div>
 
-<div class="panel bg-dark border border-secondary rounded-4 p-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold m-0"><i class="fa-solid fa-terminal text-warning me-2"></i>وحدة التحكم (Console Logs)</h5>
-    <span class="badge bg-success">متصل بالخادم</span>
-  </div>
-  
+<!-- شريط الخيارات المأخوذ من صورتك بالضبط -->
+<div class="nav-tabs-nexus">
+  <button class="nav-tab-item active" onclick="switchSection('consoleSection', this)">وحدة التحكم</button>
+  <button class="nav-tab-item" onclick="switchSection('filesSection', this)">الملفات</button>
+  <button class="nav-tab-item" onclick="switchSection('envSection', this)">البيئة (.env)</button>
+  <button class="nav-tab-item" onclick="switchSection('domainsSection', this)">النطاقات</button>
+  <button class="nav-tab-item" onclick="switchSection('backupSection', this)">النسخ الاحتياطية</button>
+  <button class="nav-tab-item" onclick="switchSection('moreSection', this)">المزيد <i class="fa-solid fa-chevron-down fs-8 ms-1"></i></button>
+</div>
+
+<!-- 1. وحدة التحكم -->
+<div id="consoleSection" class="section-pane">
   <div class="console-box" id="consoleLogs">{% for log in bot_logs %}{{ log }}
-{% else %}[Nexus Engine] جاري تهيئة الحاوية...
-[Nexus Engine] تم تحميل بيئة التشغيل بنجاح. البوت جاهز.
+{% else %}[Nexus Engine] جاري تشغيل وحدة التحكم...
+[Nexus Engine] الحاوية جاهزة وتعمل بلغة ({{ active_bot.lang }}).
 {% endfor %}</div>
 
-  <div class="mt-4 p-3 bg-secondary bg-opacity-10 rounded border border-warning">
-    <h6 class="fw-bold text-warning mb-1"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>مساعد الذكاء الاصطناعي لتشخيص الأخطاء</h6>
+  <div class="mt-3 p-3 bg-secondary bg-opacity-10 rounded border border-warning">
+    <h6 class="fw-bold text-warning mb-1"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>تشخيص الذكاء الاصطناعي</h6>
     <p class="m-0 fs-6">{{ ai_diagnosis }}</p>
   </div>
 </div>
+
+<!-- 2. الملفات -->
+<div id="filesSection" class="section-pane d-none">
+  <div class="p-4 bg-dark rounded border border-secondary">
+    <h6 class="fw-bold mb-3">مدير الملفات والمرئي</h6>
+    <ul class="list-group list-group-flush bg-dark text-white">
+      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-file-code text-warning me-2"></i> main.py</li>
+      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-file-lines text-info me-2"></i> requirements.txt</li>
+      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-lock text-danger me-2"></i> .env</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 3. البيئة -->
+<div id="envSection" class="section-pane d-none">
+  <div class="p-4 bg-dark rounded border border-secondary">
+    <h6 class="fw-bold mb-3">متغيرات البيئة (Environment Variables)</h6>
+    <input type="password" class="form-control bg-secondary text-white border-0" value="••••••••••••••••••••••••" readonly>
+  </div>
+</div>
+
+<!-- 4. النطاقات -->
+<div id="domainsSection" class="section-pane d-none">
+  <div class="p-4 bg-dark rounded border border-secondary text-center">
+    <h6 class="fw-bold">إدارة النطاقات (Custom Domains)</h6>
+    <p class="text-muted">ربط دومين مخصص ببوتك السحابي.</p>
+  </div>
+</div>
+
+<!-- 5. النسخ الاحتياطية -->
+<div id="backupSection" class="section-pane d-none">
+  <div class="p-4 bg-dark rounded border border-secondary text-center">
+    <h6 class="fw-bold">النسخ الاحتياطية (Backups)</h6>
+    <p class="text-muted">حفظ نسخة احتياطية لكود وبينات البوت بضغطة زر.</p>
+  </div>
+</div>
+
+<!-- 6. المزيد -->
+<div id="moreSection" class="section-pane d-none">
+  <div class="p-4 bg-dark rounded border border-secondary text-center">
+    <h6 class="fw-bold">الإعدادات الإضافية والتحكم في الخادم</h6>
+  </div>
+</div>
+
 {% endif %}
 
 {% endif %}
@@ -303,7 +375,7 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 <footer>© 2026 Nexus Cloud Platform — جميع الحقوق محفوظة</footer>
 </div>
 
-<!-- Modal إضافة بوت / نشر جديد -->
+<!-- Modal إضافة نشر جديد -->
 {% if user %}
 <div class="modal fade" id="addBotModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -344,6 +416,12 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function switchSection(sectionId, btn) {
+  document.querySelectorAll('.section-pane').forEach(el => el.classList.add('d-none'));
+  document.querySelectorAll('.nav-tab-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(sectionId).classList.remove('d-none');
+  btn.classList.add('active');
+}
 const logs = document.getElementById('consoleLogs');
 if(logs) logs.scrollTop = logs.scrollHeight;
 </script>
@@ -381,7 +459,8 @@ def index():
         active_bot=active_bot, 
         selected_bot_idx=selected_bot_idx,
         bot_logs=bot_logs,
-        ai_diagnosis=ai_diagnosis
+        ai_diagnosis=ai_diagnosis,
+        max_bots=MAX_BOTS_PER_USER
     )
 
 @app.route('/login')
@@ -444,6 +523,9 @@ def add_bot():
     if user['id'] not in all_bots:
         all_bots[user['id']] = []
 
+    if len(all_bots[user['id']]) >= MAX_BOTS_PER_USER:
+        return f"لقد وصلت للحد الأقصى المسموح به للبوتات ({MAX_BOTS_PER_USER} بوتات).", 400
+
     new_bot_idx = len(all_bots[user['id']])
     all_bots[user['id']].append({
         'name': bot_name,
@@ -453,8 +535,25 @@ def add_bot():
     })
 
     save_data(BOTS_FILE, all_bots)
-    add_bot_log(new_bot_idx, f"تم إنشاء عملية النشر بنجاح بلغة ({bot_lang}). الحاوية تعمل الآن.")
+    add_bot_log(new_bot_idx, f"تم نشر البوت بنجاح بلغة ({bot_lang}).")
     return redirect(url_for('index', bot=new_bot_idx))
+
+@app.route('/update_lang/<int:bot_idx>', methods=['POST'])
+def update_lang(bot_idx):
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('login'))
+
+    new_lang = request.form.get('lang', 'Python')
+    all_bots = load_data(BOTS_FILE)
+    user_bots = all_bots.get(user['id'], [])
+
+    if bot_idx < len(user_bots):
+        user_bots[bot_idx]['lang'] = new_lang
+        save_data(BOTS_FILE, all_bots)
+        add_bot_log(bot_idx, f"💻 تم تحديث وتغيير لغة البرمجة إلى: {new_lang}")
+
+    return redirect(url_for('index', bot=bot_idx))
 
 @app.route('/bot_action/<int:bot_idx>/<action>')
 def bot_action(bot_idx, action):
@@ -469,13 +568,13 @@ def bot_action(bot_idx, action):
         bot = user_bots[bot_idx]
         if action == 'start':
             bot['status'] = 'شغال'
-            add_bot_log(bot_idx, f"▶️ تم تشغيل البوت بنجاح واستقرار.")
+            add_bot_log(bot_idx, f"▶️ تم تشغيل البوت بنجاح.")
         elif action == 'stop':
             bot['status'] = 'متوقف'
-            add_bot_log(bot_idx, f"⏹️ تم إيقاف الحاوية وإغلاق البوت.")
+            add_bot_log(bot_idx, f"⏹️ تم إيقاف الحاوية.")
         elif action == 'restart':
             bot['status'] = 'شغال'
-            add_bot_log(bot_idx, f"🔄 جاري إعادة تشغيل البوت وتحديث الحاوية...")
+            add_bot_log(bot_idx, f"🔄 جاري إعادة تشغيل البوت...")
         
         save_data(BOTS_FILE, all_bots)
 
