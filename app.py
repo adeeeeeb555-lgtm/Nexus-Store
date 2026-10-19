@@ -13,11 +13,10 @@ from flask import Flask, render_template_string, request, redirect, url_for, ses
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "nexus_super_secret_key_123")
 
-# ==================== إعدادات تطبيق ديسكورد OAuth2 ====================
-# حط البيانات هنا أو ضفها في Environment Variables على Render
-CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "ضع_CLIENT_ID_هنا")
-CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "ضع_CLIENT_SECRET_هنا")
-REDIRECT_URI = os.environ.get("DISCORD_REDIRECT_URI", "http://localhost:5000/callback")
+# ==================== إعدادات تطبيق ديسكورد OAuth2 المدمجة ====================
+CLIENT_ID = "1557517949001007104"
+CLIENT_SECRET = "2ZlOW2-lFDEUi8l-axCiJApzlCopidgM"
+REDIRECT_URI = "https://nexus-store-6ktz.onrender.com/callback"
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
 OAUTH2_URL = f"https://discord.com/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%20email%20guilds"
