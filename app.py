@@ -15,7 +15,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "nexus_super_secret_key_123")
 
 # ==================== إعدادات تطبيق ديسكورد OAuth2 المدمجة ====================
 CLIENT_ID = "1557517949001007104"
-CLIENT_SECRET = "2ZlOW2-lFDEUi8l-axCiJApzlCopidgM"
+CLIENT_SECRET = "xdzPHlQUBJdnQoTTQjqVppxz1FNUgCIX"
 REDIRECT_URI = "https://nexus-store-6ktz.onrender.com/callback"
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
