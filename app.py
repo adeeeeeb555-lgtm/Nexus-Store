@@ -9,7 +9,7 @@ import json
 import time
 import requests
 from pathlib import Path
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template_string, request, redirect, url_for, session
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32).hex()
@@ -22,14 +22,16 @@ REDIRECT_URI = os.environ.get("DISCORD_REDIRECT_URI", "https://nexus-store-6ktz.
 DISCORD_API_BASE = "https://discord.com/api/v10"
 OAUTH2_URL = f"https://discord.com/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify%20email%20guilds"
 
-# ضع آيدي ديسكورد الخاص بك هنا ليكون مديراً عاماً (Admin) للوحة
-ADMIN_DISCORD_IDS = ["ضع_ايدي_الديسكورد_الخاص_بك_هنا"]
+# آيدي الأدمن المخصص حصرياً
+ADMIN_DISCORD_IDS = ["1374409912041603102"]
 
 # ==================== قواعد البيانات المحلية ====================
 BASE = Path(__file__).resolve().parent
 USERS_FILE = BASE / "users_db.json"
 BOTS_FILE = BASE / "user_bots.json"
 LOGS_FILE = BASE / "bot_logs.json"
+BOT_FILES_DIR = BASE / "bot_source_files"
+BOT_FILES_DIR.mkdir(exist_ok=True)
 
 def load_data(file_path):
     if file_path.exists():
@@ -53,43 +55,16 @@ def add_bot_log(user_id, bot_idx, message):
         logs[key].pop(0)
     save_data(LOGS_FILE, logs)
 
-# ==================== محاكي الذكاء الاصطناعي لتحليل المشاكل ====================
 def ai_diagnose_issue(log_text, bot_name, lang):
     log_lower = (log_text or "").lower()
     if "loginfailure" in log_lower or "token" in log_lower or "unauthorized" in log_lower:
-        return f"التوكن الخاص بـ ({bot_name}) برمجة ({lang}) غير صحيح أو منتهي. تحقق من إعدادات التوكن."
+        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** التوكن الخاص بـ ({bot_name}) برمجة ({lang}) غير صحيح أو منتهي."
     elif "privilegedintentsrequired" in log_lower or "intent" in log_lower:
-        return f"البوت يفتقد لصلاحيات الـ Intents في Discord Developer Portal (فعّل Message Content و Server Members)."
-    elif "modulenotfound" in log_lower or "cannot find module" in log_lower:
-        return f"توجد مكتبة برمجية ناقصة لم يتم تثبيتها للغة ({lang}). تحقق من ملف المتطلبات."
+        return f"⚠️ **تحليل الذكاء الاصطناعي (AI):** البوت يفتقد لصلاحيات الـ Intents في Discord Developer Portal."
     else:
-        return f"البوت ({bot_name}) بلغة ({lang}) يعمل بشكل مستقر ولا توجد أخطاء حرجة."
+        return f"✅ **تحليل الذكاء الاصطناعي (AI):** البوت ({bot_name}) بلغة ({lang}) يعمل بشكل مستقر."
 
 # ==================== تصميم الواجهة (HTML Template) ====================
-BASE_CSS = """
-:root{--ink:#0e1322;--rack:#151b30;--rack2:#1b2340;--line:#2a3354;--text:#e9edf9;--muted:#94a0c2;--accent:#8b93ff;--accent-ink:#0e1322;--on:#3ddbb0;--off:#ff7a8a;--gold:#f3bd45}
-*{box-sizing:border-box}
-body{margin:0;background:var(--ink);color:var(--text);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;min-height:100vh;line-height:1.7}
-a{text-decoration:none}
-.muted{color:var(--muted)!important}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.shell{max-width:1320px;margin:auto;padding:20px 24px 28px}
-.btn{border-radius:8px;font-weight:600;padding:8px 14px;font-size:14px}
-.btn-sm{padding:6px 11px;font-size:13px}
-.btn-primary-x{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)}
-.btn-primary-x:hover{background:#a3a9ff;color:var(--accent-ink)}
-.btn-discord{background:#5865f2;color:#fff;border:0}.btn-discord:hover{background:#4752c4;color:#fff}
-.btn-quiet{background:transparent;border:1px solid var(--line);color:var(--text)}
-.btn-quiet:hover{background:var(--rack2);color:#fff}
-.lamp{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--off);box-shadow:0 0 0 3px #ff7a8a22;flex:0 0 9px}
-.lamp.on{background:var(--on);box-shadow:0 0 0 3px #3ddbb022,0 0 10px #3ddbb099;animation:pulse 2.4s ease-in-out infinite}
-@keyframes pulse{50%{box-shadow:0 0 0 3px #3ddbb022,0 0 3px #3ddbb055}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-.form-select,.form-control{background-color:#0b101d!important;color:var(--text)!important;border:1px solid var(--line)!important;border-radius:8px!important}
-.form-select:focus,.form-control:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px #8b93ff25!important}
-.form-control::placeholder{color:#6f7a9b}
-"""
-
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="ar" dir="rtl">
@@ -101,65 +76,11 @@ HTML_TEMPLATE = """
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 <style>
-{{ base_css|safe }}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
-.brand{display:flex;align-items:center;gap:12px;color:var(--text)}
-.brand-mark{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:17px}
-.brand b{display:block;font-size:17px;font-weight:700;line-height:1.2}
-.brand small{color:var(--muted);font-size:12px}
-.user-pill{display:flex;align-items:center;gap:10px;padding:5px 6px 5px 12px;border:1px solid var(--line);border-radius:10px;background:var(--rack)}
-.avatar-img{width:34px;height:34px;border-radius:8px;object-fit:cover}
-.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-.page-head h2{font-size:26px;font-weight:700;margin:0}
-.page-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
-.strip{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;background:var(--rack);margin-bottom:20px}
-.strip>div{flex:1 1 160px;padding:12px 18px;border-inline-start:1px solid var(--line)}
-.strip>div:first-child{border-inline-start:0}
-.strip span{display:block;font-size:12px;color:var(--muted)}
-.strip b{font-size:17px;font-weight:600}
-.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
-@media(max-width:900px){.layout{grid-template-columns:1fr}.shell{padding:16px}}
-.rack{border:1px solid var(--line);border-radius:12px;background:var(--rack);overflow:hidden}
-.rack-head{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
-.rack-head span{font-weight:400;color:var(--muted);font-size:12px}
-.unit{display:flex;align-items:center;gap:12px;padding:13px 16px;color:var(--text);border-bottom:1px solid var(--line);border-inline-start:3px solid transparent;transition:background .15s}
-.unit:last-child{border-bottom:0}
-.unit:hover{background:var(--rack2);color:#fff}
-.unit.active{background:var(--rack2);border-inline-start-color:var(--accent)}
-.unit-name{font-weight:600;font-size:14px;line-height:1.3}
-.unit-meta{font-size:12px;color:var(--muted)}
-.rack-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
-.stage{border:1px solid var(--line);border-radius:12px;background:var(--rack);overflow:hidden}
-.stage-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line)}
-.stage-head h3{font-size:20px;font-weight:700;margin:0;display:flex;align-items:center;gap:10px}
-.state{font-size:13px;color:var(--muted);font-weight:500}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.seg a{padding:7px 14px;font-size:13px;font-weight:600;color:var(--text);border-inline-start:1px solid var(--line)}
-.seg a:first-child{border-inline-start:0}
-.seg a:hover{background:var(--rack2);color:#fff}
-.seg .go{color:var(--on)}.seg .halt{color:var(--off)}
-.meta-row{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);font-size:14px}
-.meta-row dt{display:inline;color:var(--muted);font-weight:400;margin-inline-end:6px}
-.meta-row dd{display:inline;margin:0;font-weight:500}
-.meta-row form{margin-inline-start:auto;display:flex;gap:8px;align-items:center}
-.meta-row .form-select{width:auto;min-width:170px}
-.console{padding:18px 20px}
-.console h4{font-size:14px;font-weight:600;margin:0 0 10px;color:var(--muted)}
-.console-box{direction:ltr;text-align:left;background:#080c17;color:#9be8c9;font:12.5px/1.9 'JetBrains Mono',ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:16px;height:min(46vh,380px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
-.diag{margin:0 20px 20px;padding:12px 16px;border-inline-start:3px solid var(--gold);background:#1d1e2a;border-radius:6px}
-.diag b{display:block;font-size:14px;margin-bottom:2px}
-.diag p{margin:0;font-size:14px;color:#d8dcec}
-.diag small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
-.hello{max-width:640px;margin:70px auto;text-align:center;padding:0 12px}
-.hello .brand-mark{width:60px;height:60px;border-radius:16px;font-size:26px;margin:0 auto 20px}
-.hello h2{font-size:30px;font-weight:700;margin-bottom:10px}
-.hello p{color:var(--muted);margin:0 auto 24px;max-width:520px}
-.admin-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 16px;margin-bottom:18px;border:1px solid #f3bd4560;border-radius:10px;background:#2a2312;color:var(--gold);font-size:14px}
-footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);text-align:center;color:#6f7a9b;font-size:12px}
-.modal-content{background:var(--rack)!important;border:1px solid var(--line)!important;border-radius:14px!important}
-.modal-header,.modal-footer{border-color:var(--line)!important}
-.form-label{font-size:13px;color:#c9d1ea}
-.btn-close-white{filter:invert(1)}
+:root{--bg:#0b0e14;--panel:#111620;--line:#242d3b;--muted:#8c98aa;--text:#edf2f9;--gold:#f3bd45;--green:#35c98a;--red:#ff6b78}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% -10%,#1b2536 0,transparent 42%),var(--bg);color:var(--text);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;min-height:100vh}
+a{text-decoration:none}.shell{max-width:1440px;margin:auto;padding:24px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 0 24px;border-bottom:1px solid var(--line);margin-bottom:26px}
+.brand{display:flex;align-items:center;gap:13px}.brand-mark{width:45px;height:45px;border-radius:14px;display:grid;place-items:center;color:#111;background:linear-gradient(145deg,#ffe18a,var(--gold));font-size:20px}.brand h1{font-size:18px;font-weight:800;margin:0}.brand small{display:block;color:var(--muted);font-size:12px}
+.user-pill{display:flex;align-items:center;gap:10px;background:#131a25;border:1px solid var(--line);border-radius:14px;padding:8px 12px}.avatar-img{width:38px;height:38px;border-radius:12px;border:1px solid #ffffff25;object-fit:cover}.muted{color:var(--muted)!important}.eyebrow{color:var(--gold);font-size:12px;font-weight:700}.hero{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:4px 0 26px}.hero h2{font-size:clamp(24px,3vw,34px);font-weight:800;margin:8px 0}.hero p{color:var(--muted);margin:0}.btn{border-radius:10px;font-weight:700;padding:10px 15px}.btn-nexus{background:var(--gold);color:#16130a;border:1px solid var(--gold)}.btn-discord{background:#5865f2;color:#fff;border:0}.btn-quiet{background:#171e2a;border:1px solid var(--line);color:var(--text)}.btn-sm{padding:7px 10px;font-size:12px}.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:22px;align-items:start}.panel{background:linear-gradient(145deg,#131a25,#10151e);border:1px solid var(--line);border-radius:18px;padding:21px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.panel-head h3{font-size:16px;font-weight:800;margin:0}.count{font-size:12px;color:var(--muted);background:#1c2533;border-radius:8px;padding:5px 9px}.bot-list{display:grid;gap:10px}.bot-item{display:block;padding:14px;border-radius:13px;border:1px solid var(--line);background:#0f141d;color:var(--text);transition:.18s}.bot-item:hover{border-color:#687080;color:white}.bot-item.active{border-color:#c99b37;background:linear-gradient(110deg,#342b18,#171b22);box-shadow:inset -3px 0 var(--gold)}.bot-title{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:700;font-size:14px}.bot-meta{font-size:12px;color:var(--muted);margin-top:9px}.status{font-size:11px;font-weight:700;border-radius:99px;padding:4px 8px}.status.on{background:#153b30;color:#60e2ad}.status.off{background:#392129;color:#ff929c}.empty{padding:30px 12px;text-align:center;border:1px dashed #303a4a;border-radius:13px;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:20px}.stat{padding:16px;border:1px solid var(--line);border-radius:15px;background:#111721}.stat-label{font-size:12px;color:var(--muted)}.stat-value{font-size:22px;font-weight:800;margin-top:8px}.stat-icon{float:left;color:var(--gold);font-size:16px}.control-title{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.control-title h3{font-size:20px;font-weight:800;margin:0}.details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:22px}.detail{background:#0e141d;border:1px solid var(--line);border-radius:14px;padding:17px}.detail h4{font-size:13px;font-weight:700;margin:0 0 14px}.detail p{font-size:13px;margin:9px 0;color:#dbe2ec}.form-select,.form-control{background-color:#0b1018!important;color:var(--text)!important;border:1px solid #2a3545!important;border-radius:10px!important}.console-box{direction:ltr;text-align:left;background:#080c12;color:#86e7b3;font:12px/1.9 monospace;border:1px solid #263140;border-radius:13px;padding:16px;height:220px;overflow:auto;white-space:pre-wrap}.ai-box{display:flex;gap:13px;align-items:flex-start;margin-top:16px;padding:16px;border:1px solid #51452b;background:#201d16;border-radius:14px}.ai-icon{width:38px;height:38px;flex:0 0 38px;border-radius:11px;background:#3a301b;color:var(--gold);display:grid;place-items:center}.welcome{max-width:760px;margin:70px auto;text-align:center;padding:55px 28px}.welcome-logo{width:76px;height:76px;border-radius:24px;margin:0 auto 22px;display:grid;place-items:center;background:#f3bd4517;border:1px solid #f3bd4540;color:var(--gold);font-size:31px}footer{margin-top:34px;padding:22px 0;border-top:1px solid var(--line);text-align:center;color:#748096;font-size:12px}.modal-content{background:#111721!important;border:1px solid var(--line)!important;border-radius:17px!important}.form-label{font-size:13px;color:#c7d0de}.btn-close-white{filter:invert(1)}.shortcut-tip{background:#151c28;border:1px dashed var(--gold);color:var(--gold);padding:8px 14px;border-radius:10px;font-size:13px;margin-bottom:15px;display:inline-block}
 </style>
 </head>
 <body>
@@ -167,17 +88,17 @@ footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);text-al
 <header class="topbar">
   <a class="brand" href="/">
     <span class="brand-mark"><i class="fa-solid fa-cubes-stacked"></i></span>
-    <span><b>Nexus Hosting</b><small>استضافة بوتات ديسكورد</small></span>
+    <span><h1>NEXUS HOSTING</h1><small>Discord Bot Control Center</small></span>
   </a>
   <div class="d-flex align-items-center gap-2">
     {% if is_admin %}
-    <a href="/admin" class="btn btn-sm btn-quiet" style="color:var(--gold);border-color:#f3bd4560"><i class="fa-solid fa-shield-halved ms-1"></i> لوحة الأدمن</a>
+    <a href="/admin" class="btn btn-sm" style="background:#3a280b;color:var(--gold);border:1px solid #f3bd4550"><i class="fa-solid fa-shield-halved ms-1"></i> لوحة الأدمن</a>
     {% endif %}
     {% if user %}
     <div class="user-pill">
-      <div style="line-height:1.3"><div style="font-weight:600;font-size:13px">{{ user.username }}</div><small class="muted">متصل عبر Discord</small></div>
-      <img src="{{ user.avatar_url }}" class="avatar-img" alt="">
-      <a href="/logout" class="btn btn-quiet btn-sm" title="تسجيل الخروج" aria-label="تسجيل الخروج"><i class="fa-solid fa-arrow-right-from-bracket"></i></a>
+      <img src="{{ user.avatar_url }}" class="avatar-img" alt="Avatar">
+      <div><div style="font-weight:700;font-size:13px">{{ user.username }}</div><small class="muted">حساب ديسكورد متصل</small></div>
+      <a href="/logout" class="btn btn-quiet btn-sm me-1" title="تسجيل الخروج"><i class="fa-solid fa-arrow-right-from-bracket"></i></a>
     </div>
     {% else %}
     <a href="/login" class="btn btn-discord"><i class="fa-brands fa-discord ms-2"></i> تسجيل الدخول عبر Discord</a>
@@ -185,164 +106,145 @@ footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);text-al
   </div>
 </header>
 
+<div class="shortcut-tip">
+  <i class="fa-solid fa-keyboard ms-1"></i> <strong>اختصارات الكيبورد:</strong> اضغط <code>Ctrl + Shift + B</code> لفتح نافذة إدارة الملفات البرمجية | اضغط <code>F5</code> لتحديث الصفحة والسجلات.
+</div>
+
 {% if admin_viewing %}
-<div class="admin-banner">
-  <div><i class="fa-solid fa-eye ms-2"></i>وضع الإدارة: تتصفح الآن بوتات المستخدم <code>{{ viewing_user_id }}</code></div>
-  <a href="/" class="btn btn-sm btn-quiet">العودة للوحتي</a>
+<div class="alert alert-warning mb-4 d-flex justify-content-between align-items-center" style="background:#2a2211;border-color:#f3bd45;color:#f3bd45">
+  <div><i class="fa-solid fa-triangle-exclamation ms-2"></i><strong>وضع الإدارة (Admin View):</strong> أنت تتصفح بوتات المستخدم: <code>{{ viewing_user_id }}</code></div>
+  <a href="/" class="btn btn-sm btn-quiet" style="background:#111;color:#fff">العودة للوحة الخاصة بك</a>
 </div>
 {% endif %}
 
 {% if user %}
-<section class="page-head">
-  <div><h2>بوتاتي</h2><p>شغّل بوتاتك، تابع السجلات، وعدّل الإعدادات من مكان واحد.</p></div>
-  <button class="btn btn-primary-x" data-bs-toggle="modal" data-bs-target="#addBotModal"><i class="fa-solid fa-plus ms-2"></i>إضافة بوت</button>
+<section class="hero">
+  <div><div class="eyebrow">مساحة العمل / DASHBOARD</div><h2>أهلًا بك في لوحة التحكم</h2><p>تابع بوتاتك، راقب السجلات، وتحكّم بإعدادات الاستضافة من مكان واحد.</p></div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#filesModal"><i class="fa-solid fa-folder-open ms-2"></i>ملفات البوت</button>
+    <button class="btn btn-nexus" data-bs-toggle="modal" data-bs-target="#addBotModal"><i class="fa-solid fa-plus ms-2"></i>إضافة بوت جديد</button>
+  </div>
 </section>
-<div class="strip">
-  <div><span>عدد البوتات</span><b>{{ user_bots|length }}</b></div>
-  <div><span>حالة البوت المحدد</span><b>{% if active_bot %}{{ active_bot.status }}{% else %}—{% endif %}</b></div>
-  <div><span>لغة البوت المحدد</span><b>{% if active_bot %}{{ active_bot.lang }}{% else %}—{% endif %}</b></div>
+
+<div class="stats">
+  <div class="stat"><i class="fa-solid fa-robot stat-icon"></i><div class="stat-label">إجمالي البوتات</div><div class="stat-value">{{ user_bots|length }}</div></div>
+  <div class="stat"><i class="fa-solid fa-circle-play stat-icon"></i><div class="stat-label">حالة البوت المحدد</div><div class="stat-value" style="font-size:18px">{% if active_bot %}{{ active_bot.status }}{% else %}—{% endif %}</div></div>
+  <div class="stat"><i class="fa-solid fa-code stat-icon"></i><div class="stat-label">لغة البوت المحدد</div><div class="stat-value" style="font-size:18px">{% if active_bot %}{{ active_bot.lang }}{% else %}—{% endif %}</div></div>
 </div>
+
 <div class="layout">
-  <aside class="rack">
-    <div class="rack-head">قائمة البوتات<span>{{ user_bots|length }}</span></div>
+  <aside class="panel">
+    <div class="panel-head"><h3><i class="fa-solid fa-layer-group ms-2" style="color:var(--gold)"></i>بوتاتي</h3><span class="count">{{ user_bots|length }} بوت</span></div>
+    <div class="bot-list">
     {% for bot in user_bots %}
-      <a href="/?{% if admin_viewing %}view_user={{ viewing_user_id }}&{% endif %}bot={{ loop.index0 }}" class="unit {% if selected_bot_idx == loop.index0 %}active{% endif %}">
-        <span class="lamp {% if bot.status == 'شغال' %}on{% endif %}" title="{{ bot.status }}"></span>
-        <span><div class="unit-name">{{ bot.name }}</div><div class="unit-meta">{{ bot.lang }} — البادئة {{ bot.prefix }}</div></span>
+      <a href="/?{% if admin_viewing %}view_user={{ viewing_user_id }}&{% endif %}bot={{ loop.index0 }}" class="bot-item {% if selected_bot_idx == loop.index0 %}active{% endif %}">
+        <div class="bot-title"><span><i class="fa-solid fa-robot ms-2 muted"></i>{{ bot.name }}</span><span class="status {% if bot.status == 'شغال' %}on{% else %}off{% endif %}">{{ bot.status }}</span></div>
+        <div class="bot-meta">{{ bot.lang }} • Prefix: {{ bot.prefix }}</div>
       </a>
     {% else %}
-      <div class="rack-empty">لا توجد بوتات بعد.<br>اضغط «إضافة بوت» للبدء.</div>
+      <div class="empty"><i class="fa-solid fa-box-open d-block"></i><div style="color:#cbd4e2;font-weight:700;margin-bottom:5px">ما عندك بوتات حتى الآن</div><small>أضف أول بوت لك للبدء.</small></div>
     {% endfor %}
+    </div>
   </aside>
+  
   <main>
     {% if active_bot %}
-    <section class="stage">
-      <div class="stage-head">
-        <h3><span class="lamp {% if active_bot.status == 'شغال' %}on{% endif %}"></span>{{ active_bot.name }}<span class="state">{{ active_bot.status }}</span></h3>
-        <div class="seg">
-          <a class="go" href="/bot_action/{{ selected_bot_idx }}/start{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}"><i class="fa-solid fa-play ms-1"></i> تشغيل</a>
-          <a class="halt" href="/bot_action/{{ selected_bot_idx }}/stop{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}"><i class="fa-solid fa-stop ms-1"></i> إيقاف</a>
-          <a href="/bot_action/{{ selected_bot_idx }}/restart{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}"><i class="fa-solid fa-rotate ms-1"></i> إعادة تشغيل</a>
+    <section class="panel">
+      <div class="control-title">
+        <div><div class="eyebrow">BOT OVERVIEW</div><h3 class="mt-2">{{ active_bot.name }}</h3></div>
+        <div class="action-row">
+          <a href="/bot_action/{{ selected_bot_idx }}/start{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}" class="btn btn-sm" style="background:#174532;color:#70e4b1"><i class="fa-solid fa-play ms-1"></i> تشغيل</a>
+          <a href="/bot_action/{{ selected_bot_idx }}/stop{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}" class="btn btn-sm" style="background:#45202a;color:#ff9ca5"><i class="fa-solid fa-stop ms-1"></i> إيقاف</a>
+          <a href="/bot_action/{{ selected_bot_idx }}/restart{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}" class="btn btn-sm btn-quiet"><i class="fa-solid fa-rotate ms-1"></i> إعادة تشغيل</a>
         </div>
       </div>
-      <dl class="meta-row mb-0">
-        <div><dt>بادئة الأوامر</dt><dd><code>{{ active_bot.prefix }}</code></dd></div>
-        <div><dt>لغة البرمجة</dt><dd>{{ active_bot.lang }}</dd></div>
-        <form action="/update_lang/{{ selected_bot_idx }}{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}" method="POST">
-          <select name="lang" class="form-select form-select-sm" aria-label="لغة البرمجة">
-            <option value="Python" {% if active_bot.lang == 'Python' %}selected{% endif %}>Python</option>
-            <option value="JavaScript (Node.js)" {% if active_bot.lang == 'JavaScript (Node.js)' %}selected{% endif %}>JavaScript (Node.js)</option>
-            <option value="Lua" {% if active_bot.lang == 'Lua' %}selected{% endif %}>Lua</option>
-            <option value="TypeScript" {% if active_bot.lang == 'TypeScript' %}selected{% endif %}>TypeScript</option>
-          </select>
-          <button class="btn btn-quiet btn-sm" type="submit">حفظ اللغة</button>
-        </form>
-      </dl>
-      <div class="console">
-        <h4>سجل العمليات</h4>
-        <div class="console-box" id="consoleLogs">{% for log in bot_logs %}{{ log }}
-{% else %}لا توجد أحداث بعد. ستظهر هنا عمليات التشغيل والإيقاف والتعديل.
+      <div class="details-grid">
+        <div class="detail"><h4><i class="fa-solid fa-circle-info ms-2" style="color:var(--gold)"></i>معلومات البوت</h4>
+          <p><strong>الحالة</strong><span class="status {% if active_bot.status == 'شغال' %}on{% else %}off{% endif %}">{{ active_bot.status }}</span></p>
+          <p><strong>بادئة الأوامر</strong><code style="color:var(--gold)">{{ active_bot.prefix }}</code></p>
+          <p><strong>لغة البرمجة</strong>{{ active_bot.lang }}</p>
+        </div>
+        <div class="detail"><h4><i class="fa-solid fa-code ms-2" style="color:var(--gold)"></i>إعدادات التشغيل</h4>
+          <form action="/update_lang/{{ selected_bot_idx }}{% if admin_viewing %}?view_user={{ viewing_user_id }}{% endif %}" method="POST">
+            <label class="form-label">لغة البرمجة</label>
+            <div class="d-flex gap-2"><select name="lang" class="form-select form-select-sm">
+              <option value="Python" {% if active_bot.lang == 'Python' %}selected{% endif %}>Python</option>
+              <option value="JavaScript (Node.js)" {% if active_bot.lang == 'JavaScript (Node.js)' %}selected{% endif %}>JavaScript (Node.js)</option>
+              <option value="Lua" {% if active_bot.lang == 'Lua' %}selected{% endif %}>Lua</option>
+              <option value="TypeScript" {% if active_bot.lang == 'TypeScript' %}selected{% endif %}>TypeScript</option>
+            </select><button class="btn btn-nexus btn-sm" type="submit">حفظ</button></div>
+          </form>
+        </div>
+      </div>
+      <div class="console-head"><h4><i class="fa-solid fa-terminal ms-2" style="color:var(--gold)"></i>سجل العمليات</h4><span class="count">CONSOLE LOGS</span></div>
+      <div class="console-box" id="consoleLogs">{% for log in bot_logs %}{{ log }}
+{% else %}[Nexus Hosting] لوحة السجلات جاهزة.
 {% endfor %}</div>
-      </div>
-      <div class="diag">
-        <b>تشخيص الأخطاء</b>
-        <p>{{ ai_diagnosis }}</p>
-        <small>تحليل مبسّط من السجلات المحفوظة، وليس فحصًا مباشرًا لعملية البوت.</small>
-      </div>
+      <div class="ai-box"><div class="ai-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div><h4>مساعد تشخيص الأخطاء</h4><p>{{ ai_diagnosis }}</p></div></div>
     </section>
     {% else %}
-    <section class="stage"><div class="hello" style="margin:48px auto">
-      <h2 style="font-size:22px">اختر بوتًا أو أضف بوتًا جديدًا</h2>
-      <p>بعد إضافة أول بوت ستظهر هنا أزرار التحكم والسجلات.</p>
-      <button class="btn btn-primary-x" data-bs-toggle="modal" data-bs-target="#addBotModal"><i class="fa-solid fa-plus ms-2"></i>إضافة أول بوت</button>
-    </div></section>
+    <section class="panel welcome"><div class="welcome-logo"><i class="fa-solid fa-rocket"></i></div><h2>ابدأ بإضافة أول بوت</h2><p>ستظهر هنا لوحة التحكم بمجرد إضافة بوت جديد.</p></section>
     {% endif %}
   </main>
 </div>
 {% else %}
-<section class="hello">
-  <div class="brand-mark"><i class="fa-solid fa-cubes-stacked"></i></div>
-  <h2>شغّل بوتات ديسكورد من لوحة واحدة</h2>
-  <p>أضف بوتك، شغّله، وتابع سجلاته مباشرة. سجّل الدخول بحساب ديسكورد للبدء.</p>
-  <a href="/login" class="btn btn-discord btn-lg"><i class="fa-brands fa-discord ms-2"></i>تسجيل الدخول عبر Discord</a>
+<section class="panel welcome">
+  <div class="welcome-logo"><i class="fa-solid fa-cubes-stacked"></i></div>
+  <h2>كل بوتاتك. في مكان واحد.</h2>
+  <p>لوحة تحكم عربية لإدارة بوتات ديسكورد بكل سهولة واحترافية.</p>
+  <a href="/login" class="btn btn-discord btn-lg"><i class="fa-brands fa-discord ms-2"></i>المتابعة باستخدام Discord</a>
 </section>
 {% endif %}
 
-<footer>© 2026 Nexus Hosting — جميع الحقوق محفوظة</footer>
+<footer>© 2026 <strong>Nexus Hosting</strong> — جميع الحقوق محفوظة</footer>
 </div>
+
 {% if user %}
-<div class="modal fade" id="addBotModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-white">
-  <div class="modal-header"><h5 class="modal-title fw-bold">إضافة بوت</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
+<!-- Modal إضافة بوت -->
+<div class="modal fade" id="addBotModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-white">
+  <div class="modal-header"><h5 class="modal-title fw-bold">إضافة بوت جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <form action="/add_bot" method="POST"><div class="modal-body">
-    <div class="mb-3"><label class="form-label">اسم البوت</label><input type="text" name="name" class="form-control" placeholder="مثال: Nexus Support" required maxlength="80"></div>
-    <div class="mb-3"><label class="form-label">توكن البوت</label><input type="password" name="token" class="form-control" placeholder="الصق التوكن هنا" required autocomplete="new-password"><div class="form-text text-secondary">لا تشارك التوكن مع أي شخص.</div></div>
-    <div class="mb-3"><label class="form-label">بادئة الأوامر</label><input type="text" name="prefix" value="!" class="form-control" maxlength="10"></div>
-    <div class="mb-2"><label class="form-label">لغة البرمجة</label><select name="lang" class="form-select"><option value="Python">Python</option><option value="JavaScript (Node.js)">JavaScript (Node.js)</option><option value="Lua">Lua</option><option value="TypeScript">TypeScript</option></select></div>
-  </div><div class="modal-footer"><button type="button" class="btn btn-quiet" data-bs-dismiss="modal">إلغاء</button><button type="submit" class="btn btn-primary-x">إضافة البوت</button></div></form>
+    <div class="mb-3"><label class="form-label">اسم البوت</label><input type="text" name="name" class="form-control" required></div>
+    <div class="mb-3"><label class="form-label">توكن البوت</label><input type="password" name="token" class="form-control" required></div>
+    <div class="mb-3"><label class="form-label">بادئة الأوامر</label><input type="text" name="prefix" value="!" class="form-control"></div>
+    <div class="mb-2"><label class="form-label">اللغة</label><select name="lang" class="form-select"><option value="Python">Python</option><option value="JavaScript (Node.js)">JavaScript (Node.js)</option><option value="Lua">Lua</option><option value="TypeScript">TypeScript</option></select></div>
+  </div><div class="modal-footer"><button type="submit" class="btn btn-nexus">حفظ وإضافة</button></div></form>
+</div></div></div>
+
+<!-- Modal ملفات البوت (تفتح بـ Ctrl + Shift + B) -->
+<div class="modal fade" id="filesModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content text-white">
+  <div class="modal-header"><h5 class="modal-title fw-bold"><i class="fa-solid fa-folder-open text-warning ms-2"></i>مساحة رفع وتعديل ملفات البوت</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <form action="/save_bot_file" method="POST"><div class="modal-body">
+    <div class="mb-3">
+      <label class="form-label">اسم الملف (مثال: main.py أو config.json)</label>
+      <input type="text" name="filename" class="form-control" value="main.py" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">محتوى الكود البرمجي (Python / Script)</label>
+      <textarea name="code_content" class="form-control" rows="12" style="font-family:monospace;direction:ltr;text-align:left;" placeholder="# اكتب أو ألصق كود البوت هنا...">{{ sample_code }}</textarea>
+    </div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-quiet" data-bs-dismiss="modal">إغلاق</button><button type="submit" class="btn btn-nexus">حفظ الملف بالسيرفر</button></div></form>
 </div></div></div>
 {% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// تفعيل اختصارات لوحة المفاتيح
+document.addEventListener('keydown', function(e) {
+    // Ctrl + Shift + B لفتح نافذة الملفات
+    if (e.ctrlKey && e.shiftKey && (e.key === 'B' || e.key === 'b')) {
+        e.preventDefault();
+        var filesModalEl = document.getElementById('filesModal');
+        if (filesModalEl) {
+            var modal = new bootstrap.Modal(filesModalEl);
+            modal.show();
+        }
+    }
+});
+
 const logs=document.getElementById('consoleLogs');if(logs)logs.scrollTop=logs.scrollHeight;
 </script>
 </body></html>
-"""
-
-# ==================== صفحات لوحة الأدمن (Admin Panel Template) ====================
-ADMIN_TEMPLATE = """
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nexus Hosting — لوحة الأدمن</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-<style>
-{{ base_css|safe }}
-.wrap{max-width:1000px;margin:auto;padding:28px 20px}
-.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
-.head h2{font-size:24px;font-weight:700;margin:0}
-.panel-x{border:1px solid var(--line);border-radius:12px;background:var(--rack);overflow:hidden}
-.panel-x h4{font-size:15px;font-weight:600;margin:0;padding:14px 18px;border-bottom:1px solid var(--line)}
-.table{--bs-table-bg:transparent;--bs-table-color:var(--text);margin:0}
-.table th{color:var(--muted);font-weight:500;font-size:13px;border-bottom:1px solid var(--line);padding:12px 18px}
-.table td{border-bottom:1px solid var(--line);vertical-align:middle;padding:12px 18px;font-size:14px}
-.table tr:last-child td{border-bottom:0}
-.table-wrap{overflow-x:auto}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="head">
-    <h2><i class="fa-solid fa-shield-halved ms-2" style="color:var(--gold)"></i>لوحة الأدمن</h2>
-    <a href="/" class="btn btn-quiet btn-sm">العودة للرئيسية</a>
-  </div>
-  <div class="panel-x">
-    <h4>المستخدمون وبوتاتهم</h4>
-    <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr><th>المعرّف (ID)</th><th>اسم المستخدم</th><th>عدد البوتات</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for uid, bots in all_bots_data.items() %}
-        <tr>
-          <td><code>{{ uid }}</code></td>
-          <td>{{ users_map.get(uid, {}).get('username', 'مستخدم غير معروف') }}</td>
-          <td>{{ bots|length }}</td>
-          <td class="text-start"><a href="/admin/view_user/{{ uid }}" class="btn btn-sm btn-quiet"><i class="fa-solid fa-eye ms-1"></i> تصفح البوتات</a></td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4" class="text-center muted py-4">لا يوجد مستخدمون أو بوتات مسجلة حتى الآن.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-  </div>
-</div>
-</body>
-</html>
 """
 
 # ==================== المسارات والمنطق (Routes) ====================
@@ -357,7 +259,6 @@ def index():
     
     is_admin = user and (user['id'] in ADMIN_DISCORD_IDS)
     
-    # ميزة الأدمن: تصفح بوتات مستخدم آخر عبر ?view_user=USER_ID
     target_user_id = request.args.get('view_user')
     admin_viewing = False
     
@@ -386,9 +287,12 @@ def index():
             combined_logs = "\n".join(bot_logs)
             ai_diagnosis = ai_diagnose_issue(combined_logs, active_bot['name'], active_bot['lang'])
 
+    # تحميل نموذج كود افتراضي للعرض
+    sample_code_path = BOT_FILES_DIR / "main.py"
+    sample_code = sample_code_path.read_text(encoding="utf-8") if sample_code_path.exists() else "# اكتب كود بوت الديسكورد هنا\nimport discord\n"
+
     return render_template_string(
-        HTML_TEMPLATE,
-        base_css=BASE_CSS,
+        HTML_TEMPLATE, 
         user=user, 
         user_bots=user_bots, 
         active_bot=active_bot, 
@@ -397,8 +301,25 @@ def index():
         ai_diagnosis=ai_diagnosis,
         is_admin=is_admin,
         admin_viewing=admin_viewing,
-        viewing_user_id=viewing_user_id
+        viewing_user_id=viewing_user_id,
+        sample_code=sample_code
     )
+
+@app.route('/save_bot_file', methods=['POST'])
+def save_bot_file():
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('login'))
+    
+    filename = request.form.get('filename', 'main.py').strip()
+    code_content = request.form.get('code_content', '')
+    
+    # حماية ضد المسارات الضارة
+    filename = os.path.basename(filename)
+    file_path = BOT_FILES_DIR / filename
+    
+    file_path.write_text(code_content, encoding="utf-8")
+    return redirect(url_for('index'))
 
 @app.route('/admin')
 def admin_panel():
@@ -409,14 +330,14 @@ def admin_panel():
     all_bots_data = load_data(BOTS_FILE)
     users_map = load_data(USERS_FILE)
     
-    return render_template_string(ADMIN_TEMPLATE, base_css=BASE_CSS, all_bots_data=all_bots_data, users_map=users_map)
-
-@app.route('/admin/view_user/<uid>')
-def admin_view_user(uid):
-    user = session.get('user')
-    if not user or user['id'] not in ADMIN_DISCORD_IDS:
-        return "غير مأذون لك.", 403
-    return redirect(url_for('index', view_user=uid))
+    return f"""
+    <html dir="rtl"><body style="background:#0b0e14;color:#fff;font-family:Tahoma;padding:30px">
+    <h2>🛡️ لوحة الأدمن الحصرية (الأدمن: {user['username']})</h2>
+    <a href="/" style="color:#f3bd45">العودة للرئيسية</a>
+    <hr>
+    <pre>{json.dumps(all_bots_data, ensure_ascii=False, indent=2)}</pre>
+    </body></html>
+    """
 
 @app.route('/login')
 def login():
@@ -489,21 +410,17 @@ def add_bot():
     })
 
     save_data(BOTS_FILE, all_bots)
-    add_bot_log(user['id'], new_bot_idx, f"تم إضافة البوت بنجاح بلغة البرمجة ({bot_lang}).")
+    add_bot_log(user['id'], new_bot_idx, f"تم إضافة البوت بنجاح بلغة ({bot_lang}).")
     return redirect(url_for('index', bot=new_bot_idx))
 
 @app.route('/bot_action/<int:bot_idx>/<action>')
 def bot_action(bot_idx, action):
     user = session.get('user')
-    if not user or user['id'] not in ADMIN_DISCORD_IDS:
-        # المستخدم العادي يتحكم ببوتاته فقط
-        target_user_id = user['id'] if user else None
-    else:
-        # الأدمن يمكنه التحكم ببوت المستخدم الذي يتصفحه حالياً
-        target_user_id = request.args.get('view_user') or user['id']
-
-    if not target_user_id:
+    if not user:
         return redirect(url_for('login'))
+        
+    is_admin = user['id'] in ADMIN_DISCORD_IDS
+    target_user_id = request.args.get('view_user') if is_admin else user['id']
 
     all_bots = load_data(BOTS_FILE)
     user_bots = all_bots.get(target_user_id, [])
@@ -512,19 +429,19 @@ def bot_action(bot_idx, action):
         bot = user_bots[bot_idx]
         if action == 'start':
             bot['status'] = 'شغال'
-            add_bot_log(target_user_id, bot_idx, f"▶️ تم بدء تشغيل بوت ({bot['name']}) بنجاح.")
+            add_bot_log(target_user_id, bot_idx, f"▶️ تم تشغيل بوت ({bot['name']}) بنجاح.")
         elif action == 'stop':
             bot['status'] = 'متوقف'
-            add_bot_log(target_user_id, bot_idx, f"⏹️ تم إيقاف تشغيل بوت ({bot['name']}).")
+            add_bot_log(target_user_id, bot_idx, f"⏹️ تم إيقاف بوت ({bot['name']}).")
         elif action == 'restart':
             bot['status'] = 'شغال'
-            add_bot_log(target_user_id, bot_idx, f"🔄 جاري إعادة تشغيل بوت ({bot['name']})... البوت يعمل الآن.")
+            add_bot_log(target_user_id, bot_idx, f"🔄 جاري إعادة تشغيل بوت ({bot['name']}).")
         
         save_data(BOTS_FILE, all_bots)
 
     redirect_url = url_for('index', bot=bot_idx)
     if target_user_id != user['id']:
-        redirect_url += f"&view_user={target_user_id}"
+        redirect_url += f"?view_user={target_user_id}"
     return redirect(redirect_url)
 
 @app.route('/update_lang/<int:bot_idx>', methods=['POST'])
@@ -533,8 +450,8 @@ def update_lang(bot_idx):
     if not user:
         return redirect(url_for('login'))
         
-    target_user_id = request.args.get('view_user') if (user['id'] in ADMIN_DISCORD_IDS) else user['id']
-    target_user_id = target_user_id or user['id']
+    is_admin = user['id'] in ADMIN_DISCORD_IDS
+    target_user_id = request.args.get('view_user') if is_admin else user['id']
 
     new_lang = request.form.get('lang', 'Python')
     all_bots = load_data(BOTS_FILE)
@@ -543,11 +460,11 @@ def update_lang(bot_idx):
     if bot_idx < len(user_bots):
         user_bots[bot_idx]['lang'] = new_lang
         save_data(BOTS_FILE, all_bots)
-        add_bot_log(target_user_id, bot_idx, f"💻 تم تغيير لغة برمجة البوت إلى: {new_lang}")
+        add_bot_log(target_user_id, bot_idx, f"💻 تم تغيير لغة البوت إلى: {new_lang}")
 
     redirect_url = url_for('index', bot=bot_idx)
     if target_user_id != user['id']:
-        redirect_url += f"&view_user={target_user_id}"
+        redirect_url += f"?view_user={target_user_id}"
     return redirect(redirect_url)
 
 @app.route('/logout')
