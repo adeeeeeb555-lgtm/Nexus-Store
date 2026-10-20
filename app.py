@@ -55,7 +55,7 @@ def add_bot_log(bot_idx, message):
 def ai_diagnose_issue(log_text, bot_name, lang):
     log_lower = (log_text or "").lower()
     if "loginfailure" in log_lower or "token" in log_lower or "unauthorized" in log_lower:
-        return f"⚠️ **تحليل الذكاء الاصطناعي:** التوكن الخاص بـ ({bot_name}) غير صحيح أو منتهي الصلاحية."
+        return f"⚠️ **تحليل الذكاء الاصطناعي:** التوكن الخاص بـ ({bot_name}) غير صحيح أو منتهي الصلاحية. يرجى تعديله من إعدادات البوت."
     elif "privilegedintentsrequired" in log_lower or "intent" in log_lower:
         return f"⚠️ **تحليل الذكاء الاصطناعي:** البوت يفتقر لصلاحيات الـ Intents في Discord Developer Portal."
     else:
@@ -135,7 +135,7 @@ a { text-decoration: none; color: inherit; }
 .stat-box { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
 .stat-box strong { color: var(--text-main); font-size: 15px; }
 
-/* القائمة الخيارات المضافة المأخوذة من الصورة بالضبط */
+/* Tabs */
 .nav-tabs-nexus {
   display: flex; gap: 20px; border-bottom: 1px solid var(--panel-border); margin-bottom: 20px; padding-bottom: 8px; overflow-x: auto;
 }
@@ -192,7 +192,7 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 {% else %}
 
 {% if not active_bot %}
-<!-- الصفحة الرئيسية: مجموعة الموارد وعمليات النشر -->
+<!-- الصفحة الرئيسية -->
 <div class="resource-header-panel">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold m-0"><i class="fa-solid fa-chart-line text-warning me-2"></i>مجموعة الموارد</h5>
@@ -236,31 +236,35 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
         <th>الاسم</th>
         <th>الحالة</th>
         <th>مدة التشغيل</th>
-        <th>النسخة الاحتياطية</th>
         <th>الذاكرة</th>
         <th>CPU</th>
         <th>التخزين</th>
+        <th class="text-center">إدارة</th>
       </tr>
     </thead>
     <tbody>
       {% for bot in user_bots %}
-      <tr onclick="window.location.href='/?bot={{ loop.index0 }}'">
-        <td>
+      <tr>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">
           <div class="fw-bold text-white">{{ bot.name }}</div>
           <small class="text-muted"><i class="fa-solid fa-code me-1"></i>{{ bot.lang }}</small>
         </td>
-        <td>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">
           {% if bot.status == 'شغال' %}
           <span class="status-badge on"><i class="fa-solid fa-circle fs-8"></i> يعمل</span>
           {% else %}
           <span class="status-badge off"><i class="fa-solid fa-circle fs-8"></i> متوقف</span>
           {% endif %}
         </td>
-        <td>7 يوم و 6 س</td>
-        <td class="text-muted">-</td>
-        <td>32 MB / 256 MB</td>
-        <td>0% / 15%</td>
-        <td>45 MB / 512 MB</td>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">7 يوم</td>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">32 MB</td>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">0%</td>
+        <td onclick="window.location.href='/?bot={{ loop.index0 }}'">45 MB</td>
+        <td class="text-center">
+          <a href="/delete_bot/{{ loop.index0 }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('هل أنت متأكد من رغبتك في حذف هذا البوت نهائياً؟');" title="حذف البوت">
+            <i class="fa-solid fa-trash"></i>
+          </a>
+        </td>
       </tr>
       {% else %}
       <tr>
@@ -278,7 +282,6 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
     <a href="/" class="btn btn-outline-secondary btn-sm" title="العودة للمشاريع"><i class="fa-solid fa-arrow-right"></i></a>
     <h4 class="fw-bold m-0 text-white">{{ active_bot.name }}</h4>
     
-    <!-- إمكانية تغيير لغة البرمجة مباشرة من اللوحة -->
     <form action="/update_lang/{{ selected_bot_idx }}" method="POST" class="d-flex align-items-center gap-1">
       <select name="lang" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;" onchange="this.form.submit()">
         <option value="Python" {% if active_bot.lang == 'Python' %}selected{% endif %}>Python</option>
@@ -299,17 +302,17 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
     <a href="/bot_action/{{ selected_bot_idx }}/start" class="btn btn-success btn-sm fw-bold px-3"><i class="fa-solid fa-play me-1"></i> تشغيل</a>
     <a href="/bot_action/{{ selected_bot_idx }}/stop" class="btn btn-danger btn-sm fw-bold px-3"><i class="fa-solid fa-stop me-1"></i> إيقاف</a>
     <a href="/bot_action/{{ selected_bot_idx }}/restart" class="btn btn-warning btn-sm fw-bold px-3 text-dark"><i class="fa-solid fa-rotate me-1"></i> إعادة تشغيل</a>
+    <a href="/delete_bot/{{ selected_bot_idx }}" class="btn btn-outline-danger btn-sm px-3" onclick="return confirm('هل أنت متأكد من حذف هذا البوت؟');"><i class="fa-solid fa-trash"></i> حذف</a>
   </div>
 </div>
 
-<!-- شريط الخيارات المأخوذ من صورتك بالضبط -->
+<!-- شريط الخيارات -->
 <div class="nav-tabs-nexus">
   <button class="nav-tab-item active" onclick="switchSection('consoleSection', this)">وحدة التحكم</button>
   <button class="nav-tab-item" onclick="switchSection('filesSection', this)">الملفات</button>
-  <button class="nav-tab-item" onclick="switchSection('envSection', this)">البيئة (.env)</button>
+  <button class="nav-tab-item" onclick="switchSection('envSection', this)">البيئة & التوكن (.env)</button>
   <button class="nav-tab-item" onclick="switchSection('domainsSection', this)">النطاقات</button>
   <button class="nav-tab-item" onclick="switchSection('backupSection', this)">النسخ الاحتياطية</button>
-  <button class="nav-tab-item" onclick="switchSection('moreSection', this)">المزيد <i class="fa-solid fa-chevron-down fs-8 ms-1"></i></button>
 </div>
 
 <!-- 1. وحدة التحكم -->
@@ -330,18 +333,36 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
   <div class="p-4 bg-dark rounded border border-secondary">
     <h6 class="fw-bold mb-3">مدير الملفات والمرئي</h6>
     <ul class="list-group list-group-flush bg-dark text-white">
-      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-file-code text-warning me-2"></i> main.py</li>
-      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-file-lines text-info me-2"></i> requirements.txt</li>
-      <li class="list-group-item bg-dark text-white border-secondary"><i class="fa-solid fa-lock text-danger me-2"></i> .env</li>
+      <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-file-code text-warning me-2"></i> main.py</span>
+        <span class="badge bg-secondary">جاهز</span>
+      </li>
+      <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-file-lines text-info me-2"></i> requirements.txt</span>
+        <span class="badge bg-secondary">جاهز</span>
+      </li>
+      <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-lock text-danger me-2"></i> .env (مخفي وآمن)</span>
+        <span class="badge bg-danger">محمي</span>
+      </li>
     </ul>
   </div>
 </div>
 
-<!-- 3. البيئة -->
+<!-- 3. البيئة وتغيير التوكن -->
 <div id="envSection" class="section-pane d-none">
   <div class="p-4 bg-dark rounded border border-secondary">
-    <h6 class="fw-bold mb-3">متغيرات البيئة (Environment Variables)</h6>
-    <input type="password" class="form-control bg-secondary text-white border-0" value="••••••••••••••••••••••••" readonly>
+    <h6 class="fw-bold mb-3"><i class="fa-solid fa-key text-warning me-2"></i>إدارة متغيرات البيئة وتوكن البوت</h6>
+    <form action="/update_token/{{ selected_bot_idx }}" method="POST">
+      <div class="mb-3">
+        <label class="form-label text-muted">توكن البوت الحالي (Bot Token)</label>
+        <div class="input-group">
+          <input type="text" name="token" class="form-control bg-secondary text-white border-0" value="{{ active_bot.token }}" required>
+          <button type="submit" class="btn btn-warning fw-bold">حفظ التوكن الجديد</button>
+        </div>
+        <small class="text-muted mt-2 d-block">تغيير التتوكن سيؤدي لإعادة تشغيل الحاوية وتطبيق الإعدادات الجديدة فوراً.</small>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -357,14 +378,7 @@ footer { border-top: 1px solid var(--panel-border); margin-top: 40px; padding: 2
 <div id="backupSection" class="section-pane d-none">
   <div class="p-4 bg-dark rounded border border-secondary text-center">
     <h6 class="fw-bold">النسخ الاحتياطية (Backups)</h6>
-    <p class="text-muted">حفظ نسخة احتياطية لكود وبينات البوت بضغطة زر.</p>
-  </div>
-</div>
-
-<!-- 6. المزيد -->
-<div id="moreSection" class="section-pane d-none">
-  <div class="p-4 bg-dark rounded border border-secondary text-center">
-    <h6 class="fw-bold">الإعدادات الإضافية والتحكم في الخادم</h6>
+    <p class="text-muted">حفظ نسخة احتياطية لكود وبيانات البوت بضغطة زر.</p>
   </div>
 </div>
 
@@ -537,6 +551,39 @@ def add_bot():
     save_data(BOTS_FILE, all_bots)
     add_bot_log(new_bot_idx, f"تم نشر البوت بنجاح بلغة ({bot_lang}).")
     return redirect(url_for('index', bot=new_bot_idx))
+
+@app.route('/delete_bot/<int:bot_idx>')
+def delete_bot(bot_idx):
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('login'))
+
+    all_bots = load_data(BOTS_FILE)
+    user_bots = all_bots.get(user['id'], [])
+
+    if 0 <= bot_idx < len(user_bots):
+        deleted_bot = user_bots.pop(bot_idx)
+        all_bots[user['id']] = user_bots
+        save_data(BOTS_FILE, all_bots)
+
+    return redirect(url_for('index'))
+
+@app.route('/update_token/<int:bot_idx>', methods=['POST'])
+def update_token(bot_idx):
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('login'))
+
+    new_token = request.form.get('token')
+    all_bots = load_data(BOTS_FILE)
+    user_bots = all_bots.get(user['id'], [])
+
+    if 0 <= bot_idx < len(user_bots):
+        user_bots[bot_idx]['token'] = new_token
+        save_data(BOTS_FILE, all_bots)
+        add_bot_log(bot_idx, "🔑 تم تحديث توكن البوت بنجاح وإعادة تشغيل الحاوية.")
+
+    return redirect(url_for('index', bot=bot_idx))
 
 @app.route('/update_lang/<int:bot_idx>', methods=['POST'])
 def update_lang(bot_idx):
